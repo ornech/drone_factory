@@ -174,7 +174,13 @@ def generate_ac3d_model(project: ProjectInput, design: DerivedDesign, output_pat
     fuselage_height = vg.fuselage_height_m
     # Fuselage is centered around its own origin, then moved.
     # Its origin is placed at x=length/2 so the nose is at x=0 in the internal frame.
-    fuselage_loc_ac3d = design_to_ac3d((fuselage_length / 2, 0, fuselage_height / 2))
+    fuselage_z_center = fuselage_height / 2
+    if design.vertical_geometry is not None:
+        fuselage_z_center = (
+            design.vertical_geometry.fuselage_bottom_z_m
+            + fuselage_height / 2
+        )
+    fuselage_loc_ac3d = design_to_ac3d((fuselage_length / 2, 0, fuselage_z_center))
     fuselage = Ac3dObject("fuselage")
     fuselage.location = fuselage_loc_ac3d
     _create_box(fuselage, (fuselage_length, fuselage_width, fuselage_height))

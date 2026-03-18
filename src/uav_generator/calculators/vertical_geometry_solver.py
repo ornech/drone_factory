@@ -93,9 +93,23 @@ def calculate_vertical_geometry(proj: ProjectInput, design: DerivedDesign) -> De
     cg_z_m = h_cg_above_ground + (fuselage_bottom_z_m - gear_z_m)
 
     # 6. Propeller geometry
-    # Keep hub just high enough to avoid ground strike while staying tied to the new CG height.
-    prop_hub_z_m = max(cg_z_m + 0.05, prop_radius_m + 0.02)
+    # Real ground plane in the design frame
+    ground_plane_z_m = fuselage_bottom_z_m - gear_z_m
+
+    # Keep a realistic but achievable target here.
+    # The full mission target may conflict with the bounded CG height,
+    # but propeller ground strike itself is never acceptable.
+    prop_clearance_target_m = max(0.0, obj.garde_sol_helice_m_min * 0.4)
+
+    # Hub must stay above both:
+    # - a small offset above CG
+    # - the minimum height needed to keep the propeller tip above the real ground plane
+    prop_hub_z_m = max(
+        cg_z_m + 0.05,
+        ground_plane_z_m + prop_radius_m + prop_clearance_target_m,
+    )
     prop_tip_z_m = prop_hub_z_m - prop_radius_m
+    real_prop_clearance_m = prop_tip_z_m - ground_plane_z_m
 
     # 7. Validations
     if cg_z_m <= gear_z_m:
@@ -118,11 +132,14 @@ def calculate_vertical_geometry(proj: ProjectInput, design: DerivedDesign) -> De
         )
         return design
 
-    if prop_tip_z_m < 0.0:
+    if real_prop_clearance_m < 0.0:
         design.blocking_issues.append(
             BlockingIssue(
                 code="PROP_GROUND_STRIKE",
-                cause=f"Prop tip z={prop_tip_z_m:.3f}m < 0.",
+                cause=(
+                    f"Propeller ground clearance is negative: "
+                    f"{real_prop_clearance_m:.3f}m."
+                ),
                 proposals=[],
             )
         )
@@ -135,7 +152,7 @@ def calculate_vertical_geometry(proj: ProjectInput, design: DerivedDesign) -> De
         fuselage_bottom_z_m=fuselage_bottom_z_m,
         prop_hub_z_m=prop_hub_z_m,
         prop_tip_z_m=prop_tip_z_m,
-        prop_clearance_ok=(prop_tip_z_m >= obj.garde_sol_helice_m_min * 0.4),
+        prop_clearance_ok=(real_prop_clearance_m >= prop_clearance_target_m),
     )
 
     # Keep stability Z coherent with vertical solver
@@ -146,6 +163,6 @@ def calculate_vertical_geometry(proj: ProjectInput, design: DerivedDesign) -> De
         f"wheel_r={wheel_radius_m:.3f}m, "
         f"cg_z={cg_z_m:.3f}m, "
         f"h_max={h_max:.3f}m, "
-        f"prop_clearance={prop_tip_z_m:.3f}m"
+        f"prop_clearance={real_prop_clearance_m:.3f}m"
     )
     return design

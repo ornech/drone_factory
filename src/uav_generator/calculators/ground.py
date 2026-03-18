@@ -7,6 +7,97 @@ from ..data_models import (
 )
 from .. import constants as C
 
+from typing import Tuple
+
+
+def solve_tricycle_gear_analytically(
+    cg_x: float,
+    h_cg_above_ground: float,
+    nose_load_fraction: float,
+    tipback_angle_deg_target: float,
+) -> Tuple[float, float, float]:
+    """
+    Solve deterministic tricycle gear geometry from:
+    - CG longitudinal position
+    - CG height above ground
+    - target nose load fraction
+    - target tip-back angle
+
+    Returns:
+        (main_gear_x, nose_gear_x, wheelbase)
+    """
+    if not (0.0 < nose_load_fraction < 1.0):
+        raise ValueError("nose_load_fraction must be in ]0,1[")
+
+    if h_cg_above_ground <= 0.0:
+        raise ValueError("h_cg_above_ground must be > 0")
+
+    if tipback_angle_deg_target <= 0.0 or tipback_angle_deg_target >= 89.0:
+        raise ValueError("tipback_angle_deg_target must be in ]0,89[")
+
+    theta = math.radians(tipback_angle_deg_target)
+
+    # d = distance from CG to main gear
+    d = h_cg_above_ground / math.tan(theta)
+    main_gear_x = cg_x + d
+
+    # nose load fraction:
+    # fn = (x_main - x_cg) / (x_main - x_nose)
+    nose_gear_x = main_gear_x - (main_gear_x - cg_x) / nose_load_fraction
+
+    wheelbase = main_gear_x - nose_gear_x
+
+    return main_gear_x, nose_gear_x, wheelbase
+
+
+def solve_tricycle_gear_with_bounds(
+    cg_x: float,
+    h_cg_above_ground: float,
+    nose_load_fraction: float,
+    tipback_angle_deg_target: float,
+    fuselage_length: float,
+    nose_x_min: float = 0.02,
+    main_x_max: float | None = None,
+    wheelbase_max_ratio: float = 0.7,
+) -> Tuple[float, float, float]:
+    """
+    Deterministic tricycle gear solver with basic geometric bounds.
+
+    Raises ValueError if the analytically computed solution is outside
+    admissible structural bounds.
+    """
+    x_main, x_nose, wheelbase = solve_tricycle_gear_analytically(
+        cg_x=cg_x,
+        h_cg_above_ground=h_cg_above_ground,
+        nose_load_fraction=nose_load_fraction,
+        tipback_angle_deg_target=tipback_angle_deg_target,
+    )
+
+    if main_x_max is None:
+        main_x_max = fuselage_length
+
+    if x_nose < nose_x_min:
+        raise ValueError(
+            f"Analytic nose gear position {x_nose:.3f} m < nose_x_min {nose_x_min:.3f} m"
+        )
+
+    if x_main > main_x_max:
+        raise ValueError(
+            f"Analytic main gear position {x_main:.3f} m > main_x_max {main_x_max:.3f} m"
+        )
+
+    if wheelbase > wheelbase_max_ratio * fuselage_length:
+        raise ValueError(
+            f"Analytic wheelbase {wheelbase:.3f} m > {wheelbase_max_ratio:.2f} * fuselage_length"
+        )
+
+    if wheelbase <= 0.0:
+        raise ValueError("Analytic wheelbase must be > 0")
+
+    return x_main, x_nose, wheelbase
+
+
+
 def calculate_ground_systems(proj: ProjectInput, design: DerivedDesign) -> DerivedDesign:
     """
     Calculates landing gear geometry, static loads, and stability on the ground based on physical objectives.
@@ -40,17 +131,20 @@ def calculate_ground_systems(proj: ProjectInput, design: DerivedDesign) -> Deriv
     
 # Vertical geometry from vertical_geometry_solver (source of truth)
     if hasattr(design, 'vertical_geometry') and design.vertical_geometry:
-        cg_z = design.vertical_geometry.cg_z_m
-        wheel_radius_m = design.vertical_geometry.wheel_radius_m
-        gear_z_m = design.vertical_geometry.gear_z_m
-        belly_z = -design.fuselage.maitre_couple_m / 2.0
+        vg = design.vertical_geometry
+        cg_z = vg.cg_z_m
+        wheel_radius_m = vg.wheel_radius_m
+        gear_z_m = vg.gear_z_m
+        fuselage_bottom_z_m = vg.fuselage_bottom_z_m
     else:
         # Fallback (should not happen)
         fuselage_height = design.fuselage.maitre_couple_m
         min_cg_z = -fuselage_height / 2.0 + obj.garde_sol_fuselage_m_min + 0.05
         cg_z = max(0.0, min_cg_z)
         belly_z = -fuselage_height / 2.0
+        fuselage_bottom_z_m = belly_z
         wheel_radius_m = 0.05
+        gear_z_m = belly_z - (abs(belly_z) + obj.garde_sol_fuselage_m_min + 0.05)
     
     design.stability.cg_location_m = [cg_x, cg_y, cg_z]
 
@@ -61,29 +155,22 @@ def calculate_ground_systems(proj: ProjectInput, design: DerivedDesign) -> Deriv
     # The primary driver for gear height is propeller clearance.
     prop_radius_m = (proj.helice.diametre_in * 0.0254) / 2.0
     
-    # Calculate required physical gear height below the belly
-    # Prioritize fuselage clearance; prop is soft check later
-    gear_height_m = abs(belly_z) + obj.garde_sol_fuselage_m_min + 0.05  # Minimal for fuselage + safety
-    # Prop clearance is validated separately as soft constraint (per rules)
-    
-    # Estimate wheel radius as a fraction of gear height, unless overridden.
-    wheel_radius_m = ovr.rayon_roue_m if ovr.rayon_roue_m else gear_height_m / 3.0
-    
+    # Physical vertical quantities from the vertical solver
+    if hasattr(design, 'vertical_geometry') and design.vertical_geometry:
+        contact_point_z = gear_z_m
+        wheel_radius_m = design.vertical_geometry.wheel_radius_m
+        gear_height_m = fuselage_bottom_z_m - gear_z_m
+    else:
+        # Fallback
+        gear_height_m = abs(fuselage_bottom_z_m - gear_z_m)
+        contact_point_z = gear_z_m
+
     # Static deflection assumption for spring calculation and visual/physical offset.
     deflection_static_m = max(0.01, wheel_radius_m * 0.3)
 
-    # The uncompressed JSBSim BOGEY location in structural frame (use vertical_geometry)
-    if hasattr(design, 'vertical_geometry') and design.vertical_geometry:
-        contact_point_z = design.vertical_geometry.gear_z_m
-        wheel_radius_m = design.vertical_geometry.wheel_radius_m
-    else:
-        # Fallback
-        contact_point_z = belly_z - gear_height_m
-        wheel_radius_m = gear_height_m / 3.0
-
 
     # Height of CG above ground plane at rest
-    h_cg_above_ground = cg_z - (belly_z - gear_height_m)
+    h_cg_above_ground = cg_z - (fuselage_bottom_z_m - gear_z_m)
     
     if h_cg_above_ground <= 0:
         design.blocking_issues.append(BlockingIssue(
@@ -301,7 +388,9 @@ def calculate_ground_systems(proj: ProjectInput, design: DerivedDesign) -> Deriv
     ]
     
     # --- 6. Final Validations ---
-    garde_sol_helice_m_calculee = gear_height_m - prop_radius_m
+    garde_sol_helice_m_calculee = design.vertical_geometry.prop_tip_z_m - (
+        design.vertical_geometry.fuselage_bottom_z_m - design.vertical_geometry.gear_z_m
+    )
     if garde_sol_helice_m_calculee <= 0.0:
         print(f"WARN: Propeller clearance marginal ({garde_sol_helice_m_calculee:.3f}m). Check propeller-clearance.md rules.")
     elif garde_sol_helice_m_calculee < obj.garde_sol_helice_m_min * 0.8:
@@ -355,7 +444,7 @@ def calculate_ground_systems(proj: ProjectInput, design: DerivedDesign) -> Deriv
         charge_nez_pct_calculee=final_nose_load_fraction * 100.0,
         angle_tipback_deg_calcule=actual_tipback_angle_deg,
         garde_sol_helice_m_calculee=garde_sol_helice_m_calculee,
-        garde_sol_fuselage_m_calculee=gear_height_m - wheel_radius_m, # Assumes fuselage bottom is at wheel axle height
+        garde_sol_fuselage_m_calculee=design.vertical_geometry.fuselage_bottom_z_m,
 
         nose_gear_pos=nose_gear_pos,
         main_gear_left_pos=main_gear_left_pos,
