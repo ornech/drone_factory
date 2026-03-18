@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 import yaml
+import pytest
 
 from uav_generator.pipeline import PipelineOrchestrator
 from uav_generator.data_models import ProjectInput
@@ -33,5 +34,21 @@ def test_reference_derived_design_values(tmp_path, monkeypatch):
     assert gen["wing_geometry"]["surface_alaire_m2"] == ref["wing_geometry"]["surface_alaire_m2"]
     assert gen["wing_geometry"]["envergure_m"] == ref["wing_geometry"]["envergure_m"]
 
-    assert gen["ground_reactions"]["empattement_m"] == ref["ground_reactions"]["empattement_m"]
-    assert gen["ground_reactions"]["voie_m"] == ref["ground_reactions"]["voie_m"]
+    # Solver sol heuristique : comparaison avec tolérance, pas égalité binaire
+    assert gen["ground_reactions"]["empattement_m"] == pytest.approx(
+        ref["ground_reactions"]["empattement_m"], abs=0.005
+    )
+    assert gen["ground_reactions"]["charge_nez_pct_calculee"] == pytest.approx(
+        ref["ground_reactions"]["charge_nez_pct_calculee"], abs=0.5
+    )
+
+    for i in range(3):
+        assert gen["ground_reactions"]["nose_gear_pos"][i] == pytest.approx(
+            ref["ground_reactions"]["nose_gear_pos"][i], abs=0.005
+        )
+        assert gen["ground_reactions"]["main_gear_left_pos"][i] == pytest.approx(
+            ref["ground_reactions"]["main_gear_left_pos"][i], abs=0.005
+        )
+        assert gen["ground_reactions"]["main_gear_right_pos"][i] == pytest.approx(
+            ref["ground_reactions"]["main_gear_right_pos"][i], abs=0.005
+        )

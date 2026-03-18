@@ -169,8 +169,8 @@ def calculate_ground_systems(proj: ProjectInput, design: DerivedDesign) -> Deriv
             d_max = d_target
 
         # B. Bounded Grid Search & Cost Evaluation
-        steps_d = 50 if x_main_target is None else 1
-        steps_f = 20
+        steps_d = 120 if x_main_target is None else 1
+        steps_f = 80
         
         for i in range(steps_d):
             d = d_min + (d_max - d_min) * (i / max(1, steps_d - 1))
@@ -188,15 +188,27 @@ def calculate_ground_systems(proj: ProjectInput, design: DerivedDesign) -> Deriv
                 if emp_min_obj > 0 and wb < emp_min_obj: continue
                     
                 # Evaluate Cost
-                cost_f = ((fn - f_target) / f_target) ** 2
-                
+                # Priority order:
+                # 1. stay close to target nose load
+                # 2. satisfy tip-back margin without drifting to the max nose-load bound
+                # 3. keep a reasonable wheelbase ratio
+                cost_f = ((fn - f_target) / max(f_target, 1e-6)) ** 2
+
                 actual_tb = math.degrees(math.atan(h_cg_above_ground / d))
                 target_tb = obj.angle_tipback_deg_min + 5.0
-                cost_tb = ((actual_tb - target_tb) / target_tb) ** 2
-                
-                cost_wb = ((wb / fuselage_length) - 0.40) ** 2
-                
-                cost = 10.0 * cost_f + 5.0 * cost_tb + 1.0 * cost_wb
+                cost_tb = ((actual_tb - target_tb) / max(target_tb, 1e-6)) ** 2
+
+                cost_wb = ((wb / max(fuselage_length, 1e-6)) - 0.40) ** 2
+
+                # Extra penalty near admissible nose-load bounds
+                span_f = max(f_max - f_min, 1e-6)
+                edge_penalty = min(
+                    ((fn - f_min) / span_f) ** 2,
+                    ((f_max - fn) / span_f) ** 2,
+                )
+                cost_edge = 1.0 / max(edge_penalty, 1e-6)
+
+                cost = 50.0 * cost_f + 3.0 * cost_tb + 1.0 * cost_wb + 0.02 * cost_edge
                 
                 if cost < best_cost:
                     best_cost = cost
