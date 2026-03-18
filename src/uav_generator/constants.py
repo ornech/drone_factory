@@ -22,7 +22,7 @@ ETA_PROPULSIVE_STATIC = 0.50
 BATTERY_USABLE_CAPACITY_FRACTION = 0.8
 
 # g/W - Mass estimation for motor and ESC based on max power
-PROPULSION_SYSTEM_MASS_FACTOR_G_PER_W = 2.0
+PROPULSION_SYSTEM_MASS_FACTOR_G_PER_W = 1.6
 
 # Oswald efficiency number (e), accounts for non-ideal lift distribution
 OSWALD_EFFICIENCY_E = 0.8
