@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<systems>
+    <system name="FCS">
+        {% if design.control_system %}
+        {% for surface in design.control_system.surfaces %}
+        <!-- Channel for {{ surface.name }} -->
+        <channel name="{{ surface.name.replace('_', ' ').title().replace(' ', '') }}">
+            <input>{{ surface.input_property }}</input>
+            <gain>{{ surface.sign }}</gain>
+            <saturation>
+                <min>{{ -surface.max_deflection_rad }}</min>
+                <max>{{ surface.max_deflection_rad }}</max>
+            </saturation>
+            <output>{{ surface.output_property }}</output>
+        </channel>
+        {% endfor %}
+        {% else %}
+        <!-- No FCS: neutral outputs -->
+        <property value="0.0">fcs/left-aileron-pos-rad</property>
+        <property value="0.0">fcs/right-aileron-pos-rad</property>
+        <property value="0.0">fcs/elevator-pos-rad</property>
+        <property value="0.0">fcs/rudder-pos-rad</property>
+        {% endif %}
+    </system>
+</systems>

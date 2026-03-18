@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="http://jsbsim.sourceforge.net/JSBSim.xsl"?>
+<fdm_config name="{{ uav_name }}" version="2.0" release="ALPHA"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="http://jsbsim.sourceforge.net/JSBSim.xsd">
+
+    <fileheader>
+        <author>JSBSim Uav Generator</author>
+        <filecreationdate>{{ creation_date }}</filecreationdate>
+        <description>{{ description }}</description>
+    </fileheader>
+
+    <metrics>
+        <wingarea unit="FT2"> {{ wing_area_sqft | round(3) }} </wingarea>
+        <wingspan unit="FT">  {{ wing_span_ft | round(3) }} </wingspan>
+        <chord unit="FT">     {{ wing_chord_ft | round(3) }} </chord>
+        <htailarea unit="M2"> {{ htail_area_m2 | round(3) }} </htailarea>
+        <htailarm unit="M">   {{ htail_arm_m | round(3) }} </htailarm>
+        <vtailarea unit="M2"> {{ vtail_area_m2 | round(3) }} </vtailarea>
+        <vtailarm unit="M">   {{ vtail_arm_m | round(3) }} </vtailarm>
+        
+        <location name="AERORP" unit="M">
+            <x> {{ aerorp_x_m }} </x>
+            <y> {{ aerorp_y_m }} </y>
+            <z> {{ aerorp_z_m }} </z>
+        </location>
+
+        <location name="VRP" unit="M">
+            <x> {{ vrp_location_m[0] }} </x>
+            <y> {{ vrp_location_m[1] }} </y>
+            <z> {{ vrp_location_m[2] }} </z>
+        </location>
+        
+        <location name="EYEPOINT" unit="M">
+            <x> 0.5 </x>
+            <y> 0.0 </y>
+            <z> 0.2 </z>
+        </location>
+    </metrics>
+
+    <mass_balance>
+        <!-- Inertia tensor in SLUG*FT^2 -->
+        <ixx unit="SLUG*FT2"> {{ ixx_slug_ft2 | round(4) }} </ixx>
+        <iyy unit="SLUG*FT2"> {{ iyy_slug_ft2 | round(4) }} </iyy>
+        <izz unit="SLUG*FT2"> {{ izz_slug_ft2 | round(4) }} </izz>
+        
+        <!-- The CG will be calculated by JSBSim based on the pointmasses. -->
+        <!-- All locations are relative to the structural frame origin (AERORP). -->
+        
+        <pointmass name="EMPTY_WEIGHT">
+            <weight unit="KG"> {{ empty_weight_kg | round(2) }} </weight>
+            <location name="EMPTY_WEIGHT_LOCATION" unit="M">
+                <!-- Assume empty weight is distributed around the calculated CG -->
+                <x> {{ payload_location_m[0] | round(4) }} </x>
+                <y> {{ payload_location_m[1] | round(4) }} </y>
+                <z> {{ payload_location_m[2] | round(4) }} </z>
+            </location>
+        </pointmass>
+        
+        <pointmass name="PAYLOAD">
+            <weight unit="KG"> {{ payload_mass_kg | round(2) }} </weight>
+            <location name="PAYLOAD_LOCATION" unit="M">
+                <x> {{ payload_location_m[0] | round(4) }} </x>
+                <y> {{ payload_location_m[1] | round(4) }} </y>
+                <z> {{ payload_location_m[2] | round(4) }} </z>
+            </location>
+        </pointmass>
+        
+        <pointmass name="BATTERY">
+            <weight unit="KG"> {{ battery_mass_kg | round(2) }} </weight>
+            <location name="BATTERY_LOCATION" unit="M">
+                <x> {{ battery_location_m[0] | round(4) }} </x>
+                <y> {{ battery_location_m[1] | round(4) }} </y>
+                <z> {{ battery_location_m[2] | round(4) }} </z>
+            </location>
+        </pointmass>
+    </mass_balance>
+
+    <ground_reactions>
+        {% include 'ground_reactions.xml.j2' %}
+    </ground_reactions>
+
+    <propulsion>
+        <engine file="../Engines/engine_electric.xml">
+            <thruster file="../Engines/propeller.xml">
+                <location unit="M">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                </location>
+                <orient unit="DEG">
+                    <pitch>0</pitch>
+                    <roll>0</roll>
+                    <yaw>0</yaw>
+                </orient>
+                <input>fcs/throttle-cmd-norm</input>
+                <control>throttle</control>
+                <sense>1</sense> <!-- 1 for clockwise, -1 for counter-clockwise -->
+                <p_factor>0.0</p_factor>
+            </thruster>
+        </engine>
+    </propulsion>
+
+    <systems>
+        {% if design.control_system %}
+        <system file="../Systems/flight-control.xml"/>
+        {% endif %}
+    </systems>
+
+    <aerodynamics>
+        <!-- Aerodynamic coefficients are defined for each axis. -->
+        <!-- These are basic estimations. A real model would use wind tunnel data or CFD. -->
+
+        <!-- ================= Coefficients ================= -->
+<function name="aero/coefficient/CL">
+            <description>Lift_Coefficient</description>
+            <sum>
+                <value>0.2</value>
+                <product>
+                    <property>aero/alpha-rad</property>
+                    <value>4.5</value>
+                </product>
+                {% if design.control_system and 'fcs/elevator-pos-rad' in design.control_system.exported_properties %}
+                <product>
+                    <property>fcs/elevator-pos-rad</property>
+                    <value>-0.7</value>
+                </product>
+                {% endif %}
+            </sum>
+        </function>
+
+        <function name="aero/coefficient/CD">
+            <description>Drag_Coefficient</description>
+            <sum>
+                <value>0.03</value>
+                <product>
+                    <value>0.05</value>
+                    <property>aero/coefficient/CL</property>
+                    <property>aero/coefficient/CL</property>
+                </product>
+            </sum>
+        </function>
+
+<function name="aero/coefficient/Cm">
+            <description>Pitching_Moment_Coefficient</description>
+            <sum>
+                <value>0.05</value>
+                <product>
+                    <property>aero/alpha-rad</property>
+                    <value>-0.8</value>
+                </product>
+                {% if design.control_system and 'fcs/elevator-pos-rad' in design.control_system.exported_properties %}
+                <product>
+                    <property>fcs/elevator-pos-rad</property>
+                    <value>-1.2</value>
+                </product>
+                {% endif %}
+                <product>
+                    <property>aero/ci2vel</property>
+                    <property>velocities/q-aero-rad_sec</property>
+                    <value>-5.0</value>
+                </product>
+            </sum>
+        </function>
+        
+<function name="aero/coefficient/Cn">
+            <description>Yawing_Moment_Coefficient</description>
+            <sum>
+                <product><property>aero/beta-rad</property><value>0.1</value></product>
+                {% if design.control_system and 'fcs/rudder-pos-rad' in design.control_system.exported_properties %}
+                <product><property>fcs/rudder-pos-rad</property><value>-0.1</value></product>
+                {% endif %}
+                <product>
+                    <property>aero/bi2vel</property>
+                    <property>velocities/r-aero-rad_sec</property>
+                    <value>-0.2</value>
+                </product>
+            </sum>
+        </function>
+
+<function name="aero/coefficient/Cl_roll">
+            <description>Rolling_Moment_Coefficient</description>
+            <sum>
+                <product><property>aero/beta-rad</property><value>-0.08</value></product>
+                {% if design.control_system and ('fcs/left-aileron-pos-rad' in design.control_system.exported_properties or 'fcs/right-aileron-pos-rad' in design.control_system.exported_properties) %}
+                <product><property>fcs/left-aileron-pos-rad</property><value>-0.15</value></product>
+                <product><property>fcs/right-aileron-pos-rad</property><value>0.15</value></product>
+                {% endif %}
+                <product>
+                    <property>aero/bi2vel</property>
+                    <property>velocities/p-aero-rad_sec</property>
+                    <value>-0.4</value>
+                </product>
+            </sum>
+        </function>
+
+        <!-- ================= Axes Forces and Moments ================= -->
+        <axis name="LIFT">
+            <function>
+                <description>Lift</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>aero/coefficient/CL</property>
+                </product>
+            </function>
+        </axis>
+
+        <axis name="DRAG">
+            <function>
+                <description>Drag</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>aero/coefficient/CD</property>
+                </product>
+            </function>
+        </axis>
+
+        <axis name="PITCH">
+            <function>
+                <description>Pitching Moment</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/cbarw-ft</property>
+                    <property>aero/coefficient/Cm</property>
+                </product>
+            </function>
+        </axis>
+        
+        <axis name="YAW">
+            <function>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>aero/coefficient/Cn</property>
+                </product>
+            </function>
+        </axis>
+
+        <axis name="ROLL">
+            <function>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>aero/coefficient/Cl_roll</property>
+                </product>
+            </function>
+        </axis>
+    </aerodynamics>
+
+</fdm_config>

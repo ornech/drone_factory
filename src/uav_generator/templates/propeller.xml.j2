@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<propeller name="{{ uav_name }}_prop" version="1.0">
+    <ixx unit="SLUG*FT2">0.001</ixx> <!-- Placeholder inertia -->
+    <diameter unit="IN">{{ propeller_diam_in }}</diameter>
+    <numblades>{{ propeller_num_blades }}</numblades>
+    <gearratio>1.0</gearratio>
+    <ct_factor>1.0</ct_factor>
+    <cp_factor>1.0</cp_factor>
+
+    <!-- 
+        These tables define propeller performance.
+        They should be populated with data from a tool like XFOIL/PROP, wind tunnel, or manufacturer specs.
+        The current values are placeholders to make the file loadable.
+        J = Advance Ratio (V/nD)
+        CT = Thrust Coefficient (T / (rho * n^2 * D^4))
+        CP = Power Coefficient (P / (rho * n^3 * D^5))
+    -->
+    <table name="C_THRUST" type="internal">
+        <tableData>
+            0.00  0.12
+            0.50  0.08
+            1.00  0.02
+        </tableData>
+    </table>
+
+    <table name="C_POWER" type="internal">
+        <tableData>
+            0.00  0.05
+            0.50  0.04
+            1.00  0.03
+        </tableData>
+    </table>
+</propeller>

@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<systems>
+  <system name="electrical">
+    <battery name="main-battery">
+      <voltage>{{ tension_batterie_v }}</voltage>
+      <amperes>{{ capacite_batterie_ah }}</amperes>
+    </battery>
+    <bus name="main-bus">
+      <source>
+        <battery>main-battery</battery>
+      </source>
+    </bus>
+  </system>
+</systems>

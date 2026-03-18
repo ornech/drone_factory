@@ -1,0 +1,69 @@
+<!-- 
+    This is a generated file fragment. All locations are in the JSBSim structural
+    frame (X-positive towards tail, Y-positive towards right, Z-positive up)
+    relative to the AERORP.
+-->
+<contact type="BOGEY" name="NOSE_GEAR">
+        <location unit="M">
+            <x> {{ nose_gear_pos_m[0] | round(4) }} </x>
+            <y> {{ nose_gear_pos_m[1] | round(4) }} </y>
+            <z> {{ nose_gear_pos_m[2] | round(4) }} </z>
+        </location>
+        <static_friction> {{ static_friction }} </static_friction>
+        <dynamic_friction> {{ dynamic_friction }} </dynamic_friction>
+        <rolling_friction> {{ rolling_friction }} </rolling_friction>
+        <spring_coeff unit="LBS/FT"> {{ k_nez_lbsft | round(2) }} </spring_coeff>
+        <damping_coeff unit="LBS/FT/SEC"> {{ c_nez_lbsftsec | round(4) }} </damping_coeff>
+        <max_steer unit="DEG"> 25.0 </max_steer>
+        <brake_group>NONE</brake_group>
+        <retractable>0</retractable>
+    </contact>
+
+    <contact type="BOGEY" name="LEFT_GEAR">
+        <location unit="M">
+            <x> {{ main_gear_left_pos_m[0] | round(4) }} </x>
+            <y> {{ main_gear_left_pos_m[1] | round(4) }} </y>
+            <z> {{ main_gear_left_pos_m[2] | round(4) }} </z>
+        </location>
+        <static_friction> {{ static_friction }} </static_friction>
+        <dynamic_friction> {{ dynamic_friction }} </dynamic_friction>
+        <rolling_friction> {{ rolling_friction }} </rolling_friction>
+        <spring_coeff unit="LBS/FT"> {{ k_main_lbsft | round(2) }} </spring_coeff>
+        <damping_coeff unit="LBS/FT/SEC"> {{ c_main_lbsftsec | round(4) }} </damping_coeff>
+        <max_steer unit="DEG">0</max_steer>
+        <brake_group>LEFT</brake_group>
+        <retractable>0</retractable>
+    </contact>
+
+    <contact type="BOGEY" name="RIGHT_GEAR">
+        <location unit="M">
+            <x> {{ main_gear_right_pos_m[0] | round(4) }} </x>
+            <y> {{ main_gear_right_pos_m[1] | round(4) }} </y>
+            <z> {{ main_gear_right_pos_m[2] | round(4) }} </z>
+        </location>
+        <static_friction> {{ static_friction }} </static_friction>
+        <dynamic_friction> {{ dynamic_friction }} </dynamic_friction>
+        <rolling_friction> {{ rolling_friction }} </rolling_friction>
+        <spring_coeff unit="LBS/FT"> {{ k_main_lbsft | round(2) }} </spring_coeff>
+        <damping_coeff unit="LBS/FT/SEC"> {{ c_main_lbsftsec | round(4) }} </damping_coeff>
+        <max_steer unit="DEG">0</max_steer>
+        <brake_group>RIGHT</brake_group>
+        <retractable>0</retractable>
+    </contact>
+    
+    <!-- Structural contact points to prevent scraping -->
+    {% for point in structural_points %}
+    <contact type="STRUCTURE" name="{{ point.name | upper }}_STRIKE">
+        <location unit="M">
+            <x> {{ point.pos[0] | round(4) }} </x>
+            <y> {{ point.pos[1] | round(4) }} </y>
+            <z> {{ point.pos[2] | round(4) }} </z>
+        </location>
+        <static_friction> {{ static_friction }} </static_friction>
+        <dynamic_friction> {{ dynamic_friction }} </dynamic_friction>
+        <!-- Add stiff spring and damping to absorb impacts -->
+        <spring_coeff unit="LBS/FT"> 50000 </spring_coeff>
+        <damping_coeff unit="LBS/FT/SEC"> 5000 </damping_coeff>
+        <damping_coeff_rebound unit="LBS/FT2/SEC2" type="SQUARE"> 1000 </damping_coeff_rebound>
+    </contact>
+{% endfor %}

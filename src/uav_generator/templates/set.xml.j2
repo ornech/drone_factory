@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+
+<PropertyList>
+    <sim>
+        <model>
+            <path>Models/{{ model_xml_filename }}</path>
+            <texture-path>Models</texture-path>
+        </model>
+<flight-model>jsb</flight-model>
+
+        <aero>JSBSim/{{ uav_name }}</aero>
+
+        <systems>
+            <flight-control>
+                <path>Systems/flight-control.xml</path>
+            </flight-control>
+        </systems>
+
+        <nasal>
+            <{{ uav_name }}>
+                <file>Nasal/init.nas</file>
+            </{{ uav_name }}>
+        </nasal>
+    </sim>
+
+</PropertyList>
