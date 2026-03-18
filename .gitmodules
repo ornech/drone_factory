@@ -1,0 +1,3 @@
+[submodule "external/drone_spec"]
+	path = external/drone_spec
+	url = /data/projets/rogue2_UAV/drone_spec
