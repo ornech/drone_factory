@@ -14,7 +14,11 @@ def test_mass_budget_airframe_fraction_sensitivity(monkeypatch):
     proj = ProjectInput(**data)
 
     for fraction in [0.25, 0.23, 0.22, 0.21, 0.20]:
-        monkeypatch.setattr(mass_module, "get_airframe_mass_fraction", lambda _proj, f=fraction: f)
+        monkeypatch.setattr(
+            mass_module,
+            "get_airframe_structure_fraction",
+            lambda _proj, f=fraction: f,
+        )
         design = DerivedDesign()
         design = mass_module.calculate_mass_budget(proj, design)
         mb = design.mass_budget

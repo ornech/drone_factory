@@ -1,7 +1,9 @@
 from uav_generator.data_models import DerivedDesign
 
+
 def test_derived_design_inventory_contains_visual_geometry():
     expected = {
+        "reference_frame",
         "mass_budget",
         "wing_geometry",
         "stability",
