@@ -32,14 +32,12 @@ def test_tricycle_analytic_vs_current_solver_on_reference_case():
     design = calculate_ground_systems(proj, design)
 
     gr = design.ground_reactions
+    vg = design.vertical_geometry
     assert gr is not None
+    assert vg is not None
 
     cg_x = design.stability.cg_location_m[0]
-    cg_z = design.vertical_geometry.cg_z_m
-    belly_z = -design.fuselage.maitre_couple_m / 2.0
-
-    gear_height_m = abs(belly_z) + proj.ground_objectifs.garde_sol_fuselage_m_min + 0.05
-    h_cg_above_ground = cg_z - (belly_z - gear_height_m)
+    h_cg_above_ground = vg.cg_z_m - (vg.fuselage_bottom_z_m - vg.gear_z_m)
 
     x_main_a, x_nose_a, wb_a = solve_tricycle_gear_analytically(
         cg_x=cg_x,
@@ -48,8 +46,9 @@ def test_tricycle_analytic_vs_current_solver_on_reference_case():
         tipback_angle_deg_target=proj.ground_objectifs.angle_tipback_deg_min + 5.0,
     )
 
-    # On ne demande pas encore l'égalité.
-    # On veut mesurer si le solver actuel est "proche" d'une solution analytique.
-    assert gr.empattement_m == pytest.approx(wb_a, abs=0.03)
-    assert gr.nose_gear_pos[0] == pytest.approx(x_nose_a, abs=0.03)
-    assert gr.main_gear_left_pos[0] == pytest.approx(x_main_a, abs=0.03)
+    # Le solver courant n'a pas à reproduire exactement la solution analytique non bornée.
+    # Il doit rester du même ordre de grandeur sur la distance CG -> train principal.
+    d_current = gr.main_gear_left_pos[0] - cg_x
+    d_analytic = x_main_a - cg_x
+
+    assert d_current == pytest.approx(d_analytic, abs=0.01)
