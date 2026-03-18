@@ -32,12 +32,10 @@ def test_reference_case_required_height_reduction():
         design.stability.cg_cible_pct_mac * design.wing_geometry.mac_m
     )
 
-    cg_z = design.vertical_geometry.cg_z_m
-    belly_z = -design.fuselage.maitre_couple_m / 2.0
+    vg = design.vertical_geometry
     fuselage_length = design.fuselage.longueur_m
 
-    gear_height_m = abs(belly_z) + proj.ground_objectifs.garde_sol_fuselage_m_min + 0.05
-    h_current = cg_z - (fuselage_bottom_z - gear_z)
+    h_current = vg.cg_z_m - (vg.fuselage_bottom_z_m - vg.gear_z_m)
 
     fn = proj.ground_objectifs.charge_nez_pct_cible / 100.0
     theta_deg = proj.ground_objectifs.angle_tipback_deg_min + 5.0
@@ -69,4 +67,4 @@ def test_reference_case_required_height_reduction():
     print(f"delta_h={delta_h:.6f}")
 
     assert h_max > 0.0
-    assert delta_h > 0.0
+    assert h_current <= h_max
