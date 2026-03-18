@@ -193,6 +193,15 @@ def generate_ac3d_model(project: ProjectInput, design: DerivedDesign, output_pat
     _create_trapezoid(h_stab, vg.htail_span_m, vg.htail_chord_root_m, vg.htail_chord_tip_m)
     root.add_child(h_stab)
 
+    # Vertical tail
+    vtail_height = max(0.05, emp.surface_v_m2 / max(vg.htail_chord_root_m, 1e-6))
+    vtail_thickness = max(0.01, vg.htail_chord_root_m * 0.08)
+    vtail_loc_ac3d = design_to_ac3d((vg.htail_arm_x_m, 0, vg.htail_z_m + vtail_height / 2))
+    v_tail = Ac3dObject("v_tail")
+    v_tail.location = vtail_loc_ac3d
+    _create_box(v_tail, (vg.htail_chord_root_m, vtail_thickness, vtail_height))
+    root.add_child(v_tail)
+
     # Landing Gear
     # Wheel size must match the physical ground model
     wheel_radius = gr.wheel_radius_m

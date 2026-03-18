@@ -217,6 +217,7 @@ class ControlSystemDesign(StrictBaseModel):
 
 
 class DerivedDesign(BaseModel):
+    reference_frame: str = "NOSE_X_AFT_Y_RIGHT_Z_UP"
     """
     This is the central data object for the design process.
     It's progressively populated by the calculator modules.
