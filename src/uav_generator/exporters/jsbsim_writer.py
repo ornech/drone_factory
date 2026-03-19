@@ -38,14 +38,14 @@ def _prepare_context(project: ProjectInput, design: DerivedDesign) -> dict:
     # JSBSim expects the inertia tensor to be specified about the CG.
     
     # Part 1: Empty airframe inertia (approximated as simple shapes)
-    Ixx_wing = (1/12) * (mb.masse_vide_kg * 0.6) * (wg.envergure_m**2) # 60% of empty mass is wing
-    Iyy_wing = (1/12) * (mb.masse_vide_kg * 0.6) * (wg.corde_racine_m**2) # Simplified
-    fuselage_mass = mb.masse_vide_kg * 0.4
+    Ixx_wing = (1/12) * (mb.mtow_kg * 0.6) * (wg.envergure_m**2) # 60% of empty mass is wing
+    Iyy_wing = (1/12) * (mb.mtow_kg * 0.6) * (wg.corde_racine_m**2) # Simplified
+    fuselage_mass = mb.mtow_kg * 0.4
     fuselage_length = wg.envergure_m * 0.6 # Heuristic
     Iyy_fuse = (1/12) * fuselage_mass * (fuselage_length**2)
     # Perpendicular axis theorem for cruciform shape (Izz = Ixx_wing + Iyy_fuse)
     Izz_airframe = Ixx_wing + Iyy_fuse
-    Iyy_airframe = Iyy_wing + Iyy_fuse
+    Iyy_airframe = (1/12) * mb.mtow_kg * (fuselage_length**2)
     Ixx_airframe = Ixx_wing
     
     # Part 2: Inertia of point masses (payload, battery) about the CG

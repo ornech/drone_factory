@@ -377,7 +377,7 @@ def calculate_ground_systems(proj: ProjectInput, design: DerivedDesign) -> Deriv
 
     # --- 5. Structural Contact Points ---
     # Placed slightly below the gear line for protection.
-    z_offset = contact_point_z - 0.05
+    z_offset = design.vertical_geometry.fuselage_bottom_z_m
     structural_points = [
         {"nose": [0.0, 0.0, z_offset]},
         {"tail": [cg_x + 2.0, 0.0, z_offset]}, # Far back
